@@ -1,0 +1,478 @@
+\documentclass[12pt,a4paper]{article}
+
+% --- Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{mathpazo}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{setspace}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{fancyhdr}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{microtype}
+
+% --- Page setup ---
+\geometry{margin=1in}
+\setlength{\headheight}{15pt}
+\setstretch{1.25}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55em}
+\graphicspath{{figures/}}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    citecolor=black,
+    urlcolor=blue
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{Math Modeling}
+\rhead{Superspreaders of Epidemic}
+\cfoot{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\captionsetup{font=small,labelfont=bf}
+
+% --- Figure placeholder box ---
+% Use this when figure files are not ready yet.
+% Later, replace \figureplaceholder{...} with:
+% \includegraphics[width=0.72\textwidth]{your_figure_file_name}
+\newcommand{\figureplaceholder}[2][0.72\textwidth]{%
+    \begingroup
+    \setlength{\fboxsep}{0pt}%
+    \centering
+    \fcolorbox{black}{gray!8}{%
+        \begin{minipage}[c][0.34\textwidth][c]{#1}
+            \centering
+            {\Large\textbf{Figure Placeholder}}\\[0.8em]
+            {\small Expected file:}\\[0.3em]
+            \texttt{\detokenize{#2}}\\[0.8em]
+            {\small Replace this box with your generated plot/image.}
+        \end{minipage}%
+    }%
+    \endgroup
+}
+
+\begin{document}
+
+% --- Title page ---
+\begin{titlepage}
+\thispagestyle{empty}
+\centering
+
+{\large \textbf{HANOI UNIVERSITY OF SCIENCE AND TECHNOLOGY}\\[1.5em]}
+{\large \textbf{SCHOOL OF INFORMATION AND COMMUNICATION TECHNOLOGY}\\[3em]}
+
+\includegraphics[width=0.72\textwidth]{cover_logo}\\[4em]
+
+{\LARGE \textbf{EFFECTS OF SUPERSPREADERS IN SPREAD}\\[0.7em]}
+{\LARGE \textbf{OF EPIDEMIC}\\[2.6em]}
+
+{\Large \textbf{MATH MODELING}\\[2em]}
+
+\begin{tabular}{rl}
+\textbf{Supervisor:} & Dr. Bui Quoc Trung \\[1em]
+\textbf{Group members:} 
+& Nguyen Thanh Lam -- 20235519 \\
+& Luong Xuan Nguyen -- 2023xxxx \\
+& Nguyen Quan -- 2023xxxx \\
+& Nguyen Binh Anh -- 2023xxxx \\
+& Bui Huu Vinh -- 2022xxxx \\
+\end{tabular}
+
+\vfill
+{Hanoi, June 2025}
+
+\end{titlepage}
+
+\pagenumbering{roman}
+\tableofcontents
+\newpage
+
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+\section{Introduction}
+
+The spread of infectious diseases is often highly heterogeneous. In many outbreaks, a small number of infected individuals are responsible for a disproportionately large number of secondary infections. These individuals are commonly called \textit{superspreaders}. A well-known example is the 2003 SARS outbreak, in which several superspreading events played an important role in the rapid increase of cases in places such as Hong Kong and Singapore.
+
+Classical SIR models divide the population into three states: susceptible (S), infected (I), and recovered (R). However, the standard well-mixed SIR model usually assumes that all individuals have the same transmission rate. This assumption is too simple for outbreaks involving superspreaders, because it cannot distinguish between ordinary infected individuals and individuals who cause unusually many secondary infections.
+
+In the reference paper ``Effects of Superspreaders in Spread of Epidemic'' by Fujie and Odagaki \cite{fujie2007}, the authors extend the SIR framework by introducing a spatial structure and two different mathematical representations of superspreaders. The first representation is the \textit{strong infectiousness model}, where superspreaders are assumed to have intrinsically higher infectiousness within the same local contact range. The second representation is the \textit{hub model}, where superspreaders are assumed to have a wider contact range, representing individuals with many social connections.
+
+The goal of this report is to study the reference model, explain its mathematical formulation, describe the Monte Carlo simulation algorithm, and reproduce several simulations mentioned in the paper. Through these simulations, we analyze how superspreaders affect percolation probability, propagation speed, epidemic curves, and the distribution of secondary infections.
+
+\section{Modeling Approach}
+
+The reference paper uses a spatial SIR model in a two-dimensional continuous space. Each individual has a fixed position and belongs to one of three states: susceptible, infected, or recovered. Disease transmission is probabilistic and depends on the distance between an infected individual and a susceptible individual.
+
+This modeling approach was selected because it is simple enough to simulate using Monte Carlo methods, but still expressive enough to capture two important aspects of epidemic spreading:
+
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{Spatial locality:} Individuals who are closer to each other are more likely to interact and transmit disease.
+    \item \textbf{Heterogeneity caused by superspreaders:} Not all infected individuals have the same spreading ability.
+\end{itemize}
+
+The key idea of the reference is not only to add superspreaders to the SIR model, but also to compare two possible mechanisms behind superspreading. In the strong infectiousness model, a superspreader is more infectious biologically or behaviorally, but still infects only nearby individuals. In the hub model, a superspreader is not necessarily more infectious at short distance, but can reach individuals over a longer range due to many social connections.
+
+This distinction is important because the two mechanisms may produce different epidemic patterns. A highly infectious local individual may create dense local clusters, while a highly connected individual may create long-range transmission paths and accelerate the spatial propagation of the epidemic.
+
+\section{Mathematical Model}
+
+\subsection{Spatial SIR Setting}
+
+The model considers $N$ individuals distributed in a two-dimensional continuous square domain of size $L \times L$. The positions of individuals are fixed during the simulation. Periodic boundary conditions are imposed so that the domain behaves like a torus, reducing boundary effects.
+
+The population density is defined as
+\begin{equation}
+    \rho = \frac{N}{L^2}.
+\end{equation}
+
+In the simulations of the reference paper, the system size is set to $L = 10r_0$, where $r_0$ is the normal interaction cutoff distance.
+
+Each individual $i$ has a state $X_i(t) \in \{S, I, R\}$, where $S$ means susceptible, $I$ means infected, and $R$ means recovered.
+
+At the beginning of each simulation, one individual is selected as the initial infected individual and placed at the bottom of the system. The remaining $N-1$ individuals are susceptible and are randomly distributed in the domain. A fraction $\lambda$ of the population is randomly designated as superspreaders. Therefore, $\lambda$ controls how common superspreaders are in the population.
+
+\subsection{Periodic Distance}
+
+Because periodic boundary conditions are used, the distance between two individuals must be computed using the shortest wrapped distance in each coordinate. If two individuals have positions $(x_1,y_1)$ and $(x_2,y_2)$, then their periodic distance is
+
+\begin{equation}
+    r =
+    \sqrt{
+    \left(\min\left(|x_1-x_2|, L-|x_1-x_2|\right)\right)^2
+    +
+    \left(\min\left(|y_1-y_2|, L-|y_1-y_2|\right)\right)^2
+    }.
+\end{equation}
+
+This distance is then used to determine the infection probability.
+
+\subsection{Transmission and Recovery}
+
+During one Monte Carlo time step, the infected individuals at the beginning of that step are allowed to transmit the disease. Each infected individual attempts to infect susceptible individuals with probability $w(r)$, where $r$ is the distance between the infected individual and the susceptible individual.
+
+Newly infected individuals do not infect others until the next Monte Carlo step. After an infected individual has attempted transmission, it recovers with probability $\gamma$. In the reference simulations, the authors fix $w_0 = 1$ and $\gamma = 1$.
+Thus, when $\gamma=1$, an infected individual recovers after one Monte Carlo step, but only after it has had the opportunity to infect susceptible individuals.
+
+\subsection{Strong Infectiousness Model}
+
+In the strong infectiousness model, superspreaders are assumed to have intrinsically stronger infectiousness. They can infect nearby susceptible individuals with a higher probability than normal individuals, but their interaction range remains the same as that of normal individuals.
+
+For a normal infected individual, the infection probability decreases with distance:
+
+\begin{equation}
+    w_n(r)=
+    \begin{cases}
+    w_0\left(1-\dfrac{r}{r_0}\right)^2, & 0 \le r \le r_0,\\[0.8em]
+    0, & r > r_0.
+    \end{cases}
+\end{equation}
+
+For a superspreader in the strong infectiousness model, the infection probability is constant within the same cutoff range:
+
+\begin{equation}
+    w_s(r)=
+    \begin{cases}
+    w_0, & 0 \le r \le r_0,\\[0.8em]
+    0, & r > r_0.
+    \end{cases}
+\end{equation}
+
+Therefore, superspreaders in this model are more infectious at short distances, but they do not have a longer contact range.
+
+\subsection{Hub Model}
+
+In the hub model, superspreaders are assumed to have many social connections. Instead of increasing the infection probability locally, the model increases the effective contact range of superspreaders.
+
+For superspreaders in the hub model, the infection probability has the same functional form but a larger cutoff distance:
+
+\begin{equation}
+    w_s(r)=
+    \begin{cases}
+    w_0\left(1-\dfrac{r}{r_n}\right)^2, & 0 \le r \le r_n,\\[0.8em]
+    0, & r > r_n,
+    \end{cases}
+\end{equation}
+
+for normal individuals, $r_n=r_0$; for superspreaders, $r_n=\sqrt{6}r_0$.
+The factor $\sqrt{6}$ is used so that the expected number of individuals infected by a superspreader per unit time is comparable between the strong infectiousness model and the hub model. Therefore, the two models are normalized to have a similar average infection strength, while differing in the spatial pattern of transmission.
+
+\subsection{Basic Reproductive Number and Critical Density}
+
+To explain the percolation transition, the reference paper introduces the basic reproductive number $R_0(\lambda)$:
+
+\begin{equation}
+R_0(\lambda)
+=
+\frac{\rho}{w_0}
+\left[
+\lambda \int w_s(r)2\pi r\,dr
++
+(1-\lambda)\int w_n(r)2\pi r\,dr
+\right].
+\end{equation}
+
+Here, $w_s(r)$ and $w_n(r)$ are the infection probabilities of superspreaders and normal individuals, respectively. This quantity represents the mean number of newly infected individuals generated by one infected individual per unit time.
+
+The percolation threshold is described by the condition
+\begin{equation}
+R_0 = R_c.
+\end{equation}
+
+In the reference paper, the critical basic reproductive number is $R_c = 4.5$ for the strong infectiousness model and $R_c = 3.2$ for the hub model. 
+Therefore, the critical density satisfies
+\begin{equation}
+\rho_c\pi r_0^2
+=
+\frac{R_c}
+{\lambda + \frac{1-\lambda}{6}}.
+\end{equation}
+This explains why increasing $\lambda$ lowers the critical density: when more superspreaders are present, the disease can percolate even when the population density is lower.
+
+
+\section{Solving Algorithm}
+
+The model is solved using Monte Carlo simulation. Since infection and recovery are probabilistic, each simulation run represents one possible realization of the epidemic under the same parameter setting.
+
+\begin{algorithm}[t]
+\footnotesize
+\caption{Monte Carlo Simulation for Spatial SIR Model with Superspreaders}
+\begin{algorithmic}[1]
+\Procedure{RunSimulation}{$N, L, \lambda, \gamma, model\_type, max\_steps$}
+    \State Initialize positions of $N$ individuals in the $L \times L$ domain
+    \State Assign a fraction $\lambda$ of individuals as superspreaders
+    \State Set one initial infected individual at the bottom of the system
+    \State Set all other individuals as susceptible
+    \For{$t \gets 0$ to $max\_steps-1$}
+        \State $I_t \gets$ set of individuals infected at the beginning of step $t$
+        \If{$I_t$ is empty}
+            \State \textbf{break}
+        \EndIf
+        \State $new\_infections \gets 0$
+        \ForAll{$i \in I_t$}
+            \ForAll{susceptible individual $j$}
+                \State $r \gets$ PeriodicDistance$(i,j,L)$
+                \State $p \gets w(r)$ according to $model\_type$ and superspreader status of $i$
+                \If{Random$(0,1) < p$}
+                    \State Set $j$ as newly infected
+                    \State Record infection time of $j$
+                    \State Set infection parent of $j$ to $i$
+                    \State Increase secondary infection count of $i$
+                    \State $new\_infections \gets new\_infections + 1$
+                \EndIf
+            \EndFor
+        \EndFor
+        \ForAll{$i \in I_t$}
+            \If{Random$(0,1) < \gamma$}
+                \State Set state of $i$ to recovered
+            \EndIf
+        \EndFor
+        \State Update epidemic curve with $new\_infections$
+        \State Update propagation front distance $r_f(t)$
+    \EndFor
+    \State \Return simulation outputs
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Initialization}
+
+At the beginning of each simulation run, the following steps are performed:
+
+\begin{enumerate}[leftmargin=2em]
+    \item Set the system size $L=10r_0$ and choose the number of individuals $N$.
+    \item Place the initial infected individual at the bottom of the system.
+    \item Randomly place the remaining $N-1$ individuals in the two-dimensional domain.
+    \item Randomly assign a fraction $\lambda$ of individuals as superspreaders.
+    \item Set the initial states: one infected individual and all other individuals susceptible.
+    \item Initialize the quantities used to record infection times, secondary infections, infection routes, new infections per time step, and propagation distance.
+\end{enumerate}
+
+\subsection{Monte Carlo Step}
+
+At each Monte Carlo time step, the simulator first identifies the individuals that are infected at the beginning of the step. Only these individuals are allowed to transmit the disease during the current step; newly infected individuals can transmit only from the next step.
+
+For each infected individual, the simulator computes the periodic distance to every susceptible individual. Then, depending on the selected model and the infector's superspreader status, the infection probability $w(r)$ is calculated. A susceptible individual becomes infected if a random number drawn from $[0,1]$ is smaller than $w(r)$.
+
+After all infection attempts in the current step have been completed, each infected individual recovers with probability $\gamma$. The simulator then updates the epidemic curve, secondary infection counts, infection tree, and propagation front distance.
+
+\subsection{Termination}
+
+The simulation stops when no infected individuals remain or when the maximum number of time steps is reached. The final output contains the epidemic history, including infection times, secondary infection counts, infection routes, new infections per step, and propagation distance.
+
+
+
+\section{Simulation Results}
+
+The reference paper performs Monte Carlo simulations for $N=150$ to $900$ individuals in an $L \times L$ continuous space with $L=10r_0$, $w_0=1$, and $\gamma=1$. The original results are averaged over many independent Monte Carlo runs with different random initial positions. In our reimplementation, we follow the same simulation procedure and reproduce selected experiments from the reference.
+
+The main quantities analyzed are percolation probability, propagation speed, epidemic curves, and the distribution of secondary infections.
+
+\subsection*{Percolation Probability}
+
+The percolation probability is defined as the fraction of simulation trials in which the infection, starting from the bottom of the system, reaches the top of the system.
+
+At low density, the disease usually stops before reaching the top boundary, so the percolation probability is close to zero. At high density, the infection can spread through the system, so the percolation probability approaches one. The transition between these two regimes defines a critical density.
+
+\begin{figure}[H]
+    \centering
+    \figureplaceholder{figures/fig1_strong_percolation.png}
+    \caption{Percolation probability as a function of density $\rho\pi r_0^2$ for different values of $\lambda$ in the strong infectiousness model.}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \figureplaceholder{figures/fig2_hub_percolation.png}
+    \caption{Percolation probability as a function of density $\rho\pi r_0^2$ for different values of $\lambda$ in the hub model.}
+\end{figure}
+
+For both models, increasing $\lambda$ shifts the percolation transition to lower density. This means that when superspreaders are more common, the epidemic can spread through the system even when the population is less dense.
+
+\begin{figure}[H]
+    \centering
+    \figureplaceholder{figures/fig3_critical_density.png}
+    \caption{Critical density $\rho_c\pi r_0^2$ as a function of superspreader fraction $\lambda$. The critical density decreases as $\lambda$ increases.}
+\end{figure}
+
+The hub model has a lower critical density than the strong infectiousness model. This indicates that long-range connectivity helps the disease percolate more easily than local strong infectiousness.
+
+\subsection*{Propagation Speed}
+
+The propagation front is measured by the distance $r_f(t)$ between the initial infected individual and the furthest infected individual at time $t$. Before $r_f(t)$ reaches a plateau due to the finite system size, the propagation velocity is estimated from the slope of $r_f(t)$ with respect to time.
+
+\begin{figure}[H]
+    \centering
+    \figureplaceholder{figures/fig4_propagation_front_strong.png}
+    \caption{Time evolution of the propagation front distance $r_f/r_0$ for different values of $\lambda$.}
+\end{figure}
+
+As $\lambda$ increases, the infection front advances faster. This occurs because superspreaders create more opportunities for transmission. The effect is especially strong in the hub model because superspreaders can generate longer infection paths.
+
+\begin{figure}[H]
+    \centering
+    \figureplaceholder{figures/fig5_velocity.png}
+    \caption{Propagation velocity as a function of superspreader fraction $\lambda$ for the strong infectiousness model and the hub model.}
+\end{figure}
+
+The propagation velocity is an increasing function of $\lambda$ in both models. For any $\lambda>0$, the hub model produces a higher propagation velocity than the strong infectiousness model.
+
+\subsection*{Epidemic Curves}
+
+The epidemic curve shows the number of newly infected individuals at each time step. It describes how quickly the outbreak grows and declines.
+
+\begin{figure}[H]
+    \centering
+    \figureplaceholder{figures/fig6_epidemic_curves.png}
+    \caption{Epidemic curves for the strong infectiousness model, the hub model, and the case without superspreaders.}
+\end{figure}
+
+When no superspreaders are present, the epidemic curve is broader and the peak occurs later. When superspreaders are included, the number of new infections increases more rapidly. In particular, the hub model produces an earlier and sharper peak than the strong infectiousness model. This indicates that long-range social connectivity can accelerate an outbreak more strongly than merely increasing local infectiousness.
+
+\subsection*{Distribution of Secondary Infections}
+
+The infection route can be represented as a network, where an edge from individual $i$ to individual $j$ means that $i$ infected $j$. The number of outgoing links of an infected individual corresponds to the number of secondary infections caused by that individual.
+
+\begin{figure}[H]
+    \centering
+    \figureplaceholder{figures/fig7_link_distribution_no_superspreaders.png}
+    \caption{Distribution of the number of secondary infections when no superspreaders are present.}
+\end{figure}
+
+Without superspreaders, most individuals infect only a small number of people, and the distribution has a short tail.
+
+\begin{figure}[H]
+    \centering
+    \figureplaceholder{figures/fig8_link_distribution_superspreaders.png}
+    \caption{Distribution of the number of secondary infections when superspreaders are present.}
+\end{figure}
+
+When superspreaders are present, the distribution has two important features. First, many infected individuals still infect no one. Second, a small number of individuals infect many people, producing a long tail. This long-tailed distribution is a characteristic signature of superspreading.
+
+In the strong infectiousness model, superspreaders tend to infect many individuals locally. In the hub model, superspreaders create long-range infection paths, which explains why the propagation speed is higher.
+
+\subsection*{Comparison with SARS Data}
+
+The reference paper compares the simulation results with SARS data from Singapore in 2003. The distribution of direct secondary cases in the SARS outbreak has a long tail, with several individuals infecting unusually many people. This pattern is qualitatively similar to the secondary infection distributions produced by the superspreader models.
+
+\begin{figure}[H]
+    \centering
+    \figureplaceholder{figures/fig9_sars_secondary_cases.png}
+    \caption{Number of direct secondary patients from SARS in Singapore from February 25 to April 30, 2003.}
+\end{figure}
+
+The reference paper also compares the epidemic curve of SARS in Singapore with model simulations. The best qualitative match is obtained by the hub model with
+\begin{equation}
+    N = 477, \qquad \rho\pi r_0^2 = 15.0, \qquad \lambda = 0.4, \qquad \gamma = 1.0,
+\end{equation}
+where one simulation time step is fitted to six days.
+
+\begin{figure}[H]
+    \centering
+    \figureplaceholder{figures/fig10_sars_epidemic_comparison.png}
+    \caption{Epidemic curve of SARS in Singapore compared with the strong infectiousness model, the hub model, and the case without superspreaders.}
+\end{figure}
+
+The hub model reproduces the SARS epidemic curve more closely than the strong infectiousness model. This suggests that the superspreading behavior in the SARS outbreak was more consistent with individuals having many social connections rather than simply having stronger local infectiousness.
+
+\section{Discussion}
+
+\subsection{Sensitivity Analysis}
+
+The model is highly sensitive to the superspreader fraction $\lambda$. As $\lambda$ increases, the critical density for percolation decreases, meaning that the disease can spread widely even in a less dense population. This behavior is consistent with the formula for $R_0(\lambda)$, where increasing $\lambda$ increases the expected number of secondary infections.
+
+The propagation speed is also sensitive to $\lambda$. A higher fraction of superspreaders creates more transmission opportunities and allows the infection front to move faster. The effect is especially strong in the hub model, where superspreaders can infect individuals over longer distances.
+
+The model is also sensitive to the assumed mechanism of superspreading. Although the strong infectiousness model and the hub model are normalized so that superspreaders have the same average infection strength, they produce different spatial patterns. The strong infectiousness model mainly creates dense local infection clusters. The hub model creates longer infection paths and faster spatial propagation. This shows that the mechanism behind superspreading matters, not only the average number of secondary infections.
+
+Population density is another important parameter. At low density, susceptible individuals are too far apart, so infection chains often stop early. At high density, there are enough nearby susceptible individuals for the disease to percolate through the system. Therefore, the epidemic outcome depends strongly on the combination of density and superspreader fraction.
+
+\subsection{Robustness of the Proposed Model}
+
+The model is robust in the sense that its main qualitative conclusions remain consistent across different simulation settings. The presence of superspreaders lowers the critical density, increases the propagation speed, creates sharper epidemic curves, and produces long-tailed secondary infection distributions. These trends appear in both superspreader models, although the hub model generally produces stronger spatial spreading.
+
+The comparison with SARS data also supports the model's relevance. The observed SARS secondary infection distribution contains a small number of individuals responsible for many infections, which is consistent with the long-tailed distributions generated by the model. Moreover, the epidemic curve of SARS in Singapore is better matched by the hub model than by the strong infectiousness model. This suggests that social connectivity is an important mechanism in superspreading events.
+
+However, the model also has limitations. Individuals are fixed in space, while real people move and change their contacts over time. The model also uses simplified infection probabilities and assumes that superspreaders are assigned randomly. In reality, superspreading may depend on behavior, occupation, environment, biological factors, and intervention policies. Therefore, the model should not be interpreted as a complete prediction tool for all epidemics. Its main value is to isolate and compare two possible mechanisms of superspreading in a controlled mathematical setting.
+
+\section{Conclusion}
+
+This report studies the spatial SIR model with superspreaders proposed by Fujie and Odagaki \cite{fujie2007}. The reference introduces two models of superspreading: the strong infectiousness model and the hub model. In the strong infectiousness model, superspreaders have higher infection probability within the same local contact range. In the hub model, superspreaders have a longer contact range, representing individuals with many social connections.
+
+The simulations show that superspreaders strongly affect epidemic spreading. Increasing the superspreader fraction $\lambda$ lowers the critical density for percolation, increases the propagation speed, makes the epidemic peak occur earlier, and produces a long-tailed distribution of secondary infections.
+
+Among the two models, the hub model produces faster spatial propagation and better reproduces the epidemic curve of the 2003 SARS outbreak in Singapore. Therefore, the main conclusion of the reference paper is that social connectivity is a crucial factor in superspreading, and that superspreaders can be effectively modeled as highly connected individuals rather than only as individuals with stronger local infectiousness.
+
+\begin{thebibliography}{9}
+
+\bibitem{fujie2007}
+R. Fujie and T. Odagaki.
+\newblock Effects of superspreaders in spread of epidemic.
+\newblock \textit{Physica A: Statistical Mechanics and its Applications}, 374(2):843--852, 2007.
+\newblock ISSN 0378-4371. doi: \href{https://doi.org/10.1016/j.physa.2006.08.050}{10.1016/j.physa.2006.08.050}.
+\newblock URL: \url{https://www.sciencedirect.com/science/article/pii/S0378437106008703}.
+
+\bibitem{lipsitch2003}
+M. Lipsitch, T. Cohen, B. Cooper, J. M. Robins, S. Ma, L. James, G. Gopalakrishna, S. K. Chew, C. C. Tan, M. H. Samore, D. Fisman, and M. Murray.
+\newblock Transmission dynamics and control of severe acute respiratory syndrome.
+\newblock \textit{Science}, 300(5627):1966--1970, 2003.
+\newblock doi: \href{https://doi.org/10.1126/science.1086616}{10.1126/science.1086616}.
+
+\bibitem{who2003}
+World Health Organization.
+\newblock Severe acute respiratory syndrome (SARS).
+\newblock \url{https://www.who.int/health-topics/severe-acute-respiratory-syndrome}, 2003.
+
+\end{thebibliography}
+
+\end{document}
