@@ -410,7 +410,15 @@ The reference paper also compares the SARS epidemic curve with model simulations
 \begin{equation}
     N = 477, \qquad \rho\pi r_0^2 = 15.0, \qquad \lambda = 0.4, \qquad \gamma = 1.0,
 \end{equation}
-where one simulation time step is fitted to six days. The hub model reproduces the SARS epidemic curve more closely than the strong infectiousness model. This suggests that the superspreading behavior in the SARS outbreak was more consistent with individuals having many social connections rather than simply having stronger local infectiousness.
+where one simulation time step is fitted to six days. To reproduce this comparison, we digitize the six-day binned SARS Singapore histogram from Fig. 15 of the reference paper, whose source is the WHO epidemic curve data \cite{fujie2007,who2003epicurve}. The digitized SARS bins sum to 206 probable cases, matching the number reported in the WHO source.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.78\linewidth]{fig_sars_epidemic_comparison.png}
+    \caption{Comparison with the SARS Singapore epidemic curve. The orange bars are six-day binned SARS data digitized from the reference figure. The simulated curves are averages over 1000 Monte Carlo runs using $N=477$, $\rho\pi r_0^2=15.0$, $\lambda=0.4$ for the two superspreader models, and $\gamma=1.0$. The comparison is qualitative, following the role of Fig. 15 in the reference paper.}
+\end{figure}
+
+The hub model gives a much earlier and sharper outbreak than the strong infectiousness model, while the no-superspreader case remains too weak to reproduce the SARS-like epidemic curve. This supports the reference conclusion that the superspreading behavior in SARS was more consistent with individuals having many social connections rather than simply having stronger local infectiousness.
 
 \section{Discussion}
 
@@ -471,6 +479,12 @@ Centers for Disease Control and Prevention.
 World Health Organization.
 \newblock Severe acute respiratory syndrome (SARS).
 \newblock \url{https://www.who.int/health-topics/severe-acute-respiratory-syndrome}, 2003.
+
+\bibitem{who2003epicurve}
+World Health Organization.
+\newblock Severe Acute Respiratory Syndrome (SARS): Global Alert, Global Response.
+\newblock WHO Communicable Diseases, 15 June 2003.
+\newblock URL: \url{https://www.info.gov.hk/info/sars/pdf/who_dr_heymann.pdf}.
 
 \end{thebibliography}
 

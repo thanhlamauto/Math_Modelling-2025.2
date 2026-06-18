@@ -1,9 +1,9 @@
 """Monte Carlo simulator for the superspreader epidemic project.
 
 The implementation follows Fujie and Odagaki's spatial SIR model closely:
-individuals live in a two-dimensional periodic domain, infection probability
-depends on wrapped distance, and superspreaders are represented either by
-stronger local infectiousness or by a longer contact radius.
+individuals live in a two-dimensional spatial domain, infection probability
+depends on distance, and superspreaders are represented either by stronger
+local infectiousness or by a longer contact radius.
 
 Running this file generates the figures used by main.tex:
 
@@ -33,9 +33,17 @@ W0 = 1.0
 DEFAULT_GAMMA = 1.0
 MAX_STEPS = 60
 SEED = 20250618
+
 PERCOLATION_DISTANCE = 0.5 * L
 PAPER_TRIALS = 1000
 MC_RUNS = int(os.environ.get("MC_RUNS", str(PAPER_TRIALS)))
+
+# Six-day binned SARS Singapore counts digitized for the qualitative
+# comparison figure.
+SARS_SINGAPORE_6DAY_COUNTS = np.array(
+    [0, 0, 5, 10, 20, 50, 17, 16, 40, 27, 12, 9] + [0] * 14,
+    dtype=float,
+)
 
 
 @dataclass
@@ -83,6 +91,7 @@ def run_simulation(
     rng: np.random.Generator,
     gamma: float = DEFAULT_GAMMA,
     max_steps: int = MAX_STEPS,
+    wrap_y: bool = True,
 ) -> SimulationResult:
     positions = rng.random((n, 2)) * L
     positions[0] = np.array([0.5 * L, 0.0])
@@ -110,7 +119,8 @@ def run_simulation(
             dx = np.abs(positions[susceptible, 0] - positions[infector, 0])
             dx = np.minimum(dx, L - dx)
             dy = np.abs(positions[susceptible, 1] - positions[infector, 1])
-            dy = np.minimum(dy, L - dy)
+            if wrap_y:
+                dy = np.minimum(dy, L - dy)
             distance = np.sqrt(dx * dx + dy * dy)
 
             probs = infection_probability(distance, bool(is_super[infector]), model)
@@ -131,7 +141,8 @@ def run_simulation(
             dx0 = np.abs(positions[ever_infected, 0] - positions[0, 0])
             dx0 = np.minimum(dx0, L - dx0)
             dy0 = np.abs(positions[ever_infected, 1] - positions[0, 1])
-            dy0 = np.minimum(dy0, L - dy0)
+            if wrap_y:
+                dy0 = np.minimum(dy0, L - dy0)
             direct_distance = np.sqrt(dx0 * dx0 + dy0 * dy0)
             front.append(float(direct_distance.max()))
             if direct_distance.max() >= PERCOLATION_DISTANCE:
@@ -163,6 +174,19 @@ def mean_padded(series: list[list[float]]) -> tuple[np.ndarray, np.ndarray]:
     for i, values in enumerate(series):
         arr[i, : len(values)] = values
     return np.nanmean(arr, axis=0), np.nanstd(arr, axis=0) / np.sqrt(len(series))
+
+
+def mean_zero_padded(series: list[list[float]], length: int | None = None) -> tuple[np.ndarray, np.ndarray]:
+    """Average time series after padding missing tail values with zero."""
+
+    max_len = length if length is not None else max((len(s) for s in series), default=0)
+    if max_len == 0:
+        return np.array([]), np.array([])
+    arr = np.zeros((len(series), max_len))
+    for i, values in enumerate(series):
+        clipped = values[:max_len]
+        arr[i, : len(clipped)] = clipped
+    return arr.mean(axis=0), arr.std(axis=0) / np.sqrt(len(series))
 
 
 def theoretical_critical(lambda_values: np.ndarray, rc: float) -> np.ndarray:
@@ -201,6 +225,7 @@ def save_percolation_figures(out_dir: Path, rng: np.random.Generator) -> dict[st
                     for _ in range(runs)
                 )
                 probs.append(hits / runs)
+
             probs_arr = np.maximum.accumulate(np.array(probs))
             criticals[model].append(interpolate_half_probability(densities, probs_arr))
             ax.plot(densities, probs_arr, marker="o", lw=1.8, ms=4, color=color, label=f"{lam:.1f}")
@@ -294,7 +319,7 @@ def save_dynamic_figures(out_dir: Path, rng: np.random.Generator) -> None:
             run_simulation(n, lam, model, rng).new_cases
             for _ in range(runs)
         ]
-        mean_curve, err_curve = mean_padded(curves)
+        mean_curve, err_curve = mean_zero_padded(curves)
         x = np.arange(mean_curve.size)
         ax.plot(x, mean_curve, lw=2, label=label)
         ax.fill_between(x, mean_curve - err_curve, mean_curve + err_curve, alpha=0.13)
@@ -307,10 +332,75 @@ def save_dynamic_figures(out_dir: Path, rng: np.random.Generator) -> None:
     plt.close(fig)
 
 
+def save_sars_comparison_figure(out_dir: Path, rng: np.random.Generator) -> None:
+    """Experiment 4: qualitative comparison with SARS Singapore data."""
+
+    runs = MC_RUNS
+    n = individuals_from_density(15.0)
+    max_steps = SARS_SINGAPORE_6DAY_COUNTS.size
+    specs = [
+        ("no superspreaders", "strong", 0.0, "#22c7d6", "^"),
+        ("strong, lambda=0.4", "strong", 0.4, "#dc2626", "o"),
+        ("hub, lambda=0.4", "hub", 0.4, "#2563eb", "s"),
+    ]
+
+    fig, ax = plt.subplots(figsize=(7.2, 4.4), dpi=160)
+    x = np.arange(max_steps)
+
+    # Observed SARS data: each model time step corresponds to six days.
+    ax.bar(
+        x,
+        SARS_SINGAPORE_6DAY_COUNTS,
+        width=0.82,
+        color="#f59e0b",
+        alpha=0.72,
+        label="SARS Singapore data",
+    )
+
+    for label, model, lam, color, marker in specs:
+        # Use wrap_y=False so the simulated outbreak has a bottom-to-top
+        # direction, matching the qualitative setup in the reference comparison.
+        curves = [
+            run_simulation(
+                n,
+                lam,
+                model,
+                rng,
+                max_steps=max_steps,
+                wrap_y=False,
+            ).new_cases
+            for _ in range(runs)
+        ]
+        mean_curve, err_curve = mean_zero_padded(curves, length=max_steps)
+        ax.plot(x, mean_curve, color=color, lw=1.8, marker=marker, ms=3.5, label=label)
+        ax.fill_between(
+            x,
+            mean_curve - err_curve,
+            mean_curve + err_curve,
+            color=color,
+            alpha=0.11,
+            linewidth=0,
+        )
+
+    ax.set_xlabel("time step (1 step = 6 days)")
+    ax.set_ylabel("new patients / infections")
+    ax.set_xlim(-0.5, 25.5)
+    ax.set_ylim(0, 80)
+    ax.grid(axis="y", alpha=0.28)
+    ax.legend(fontsize=8)
+    ax.set_title("SARS Singapore epidemic curve comparison")
+    fig.tight_layout()
+    fig.savefig(out_dir / "fig_sars_epidemic_comparison.png")
+    plt.close(fig)
+
+
 def save_secondary_figures(out_dir: Path, rng: np.random.Generator) -> None:
+    """Experiment 3: secondary-infection count distributions."""
+
     runs = MC_RUNS
     n = individuals_from_density(15.0)
 
+    # Collect every individual's number of secondary infections across runs.
     secondary_no_super = []
     secondary_strong = []
     secondary_hub = []
@@ -322,6 +412,7 @@ def save_secondary_figures(out_dir: Path, rng: np.random.Generator) -> None:
     max_k = 24
     bins = np.arange(max_k + 2) - 0.5
 
+    # Baseline distribution without superspreaders.
     fig, ax = plt.subplots(figsize=(7.2, 4.4), dpi=160)
     ax.hist(secondary_no_super, bins=bins, density=True, color="#64748b", edgecolor="white")
     ax.set_xlim(-0.5, max_k + 0.5)
@@ -334,6 +425,7 @@ def save_secondary_figures(out_dir: Path, rng: np.random.Generator) -> None:
     fig.savefig(out_dir / "fig_link_distribution_no_superspreaders.png")
     plt.close(fig)
 
+    # Superspreader distributions. Log scale makes the long tail visible.
     fig, ax = plt.subplots(figsize=(7.2, 4.4), dpi=160)
     ax.hist(secondary_strong, bins=bins, density=True, histtype="step", lw=2.2, label="strong")
     ax.hist(secondary_hub, bins=bins, density=True, histtype="step", lw=2.2, label="hub")
@@ -350,13 +442,17 @@ def save_secondary_figures(out_dir: Path, rng: np.random.Generator) -> None:
 
 
 def main() -> None:
+    """Generate all figures used in the report."""
+
     out_dir = Path("figures")
     out_dir.mkdir(exist_ok=True)
     rng = np.random.default_rng(SEED)
 
+    # The four experiment blocks are independent and can be assigned separately.
     save_percolation_figures(out_dir, rng)
     save_dynamic_figures(out_dir, rng)
     save_secondary_figures(out_dir, rng)
+    save_sars_comparison_figure(out_dir, rng)
     print(f"Generated figures in {out_dir.resolve()}")
 
 
