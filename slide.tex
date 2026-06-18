@@ -161,7 +161,7 @@
 \subtitle{Introduction to Mathematical Modelling}
 \author[Group 8]{%
   Nguyen Thanh Lam \and Luong Xuan Nguyen \and Nguyen The Quan\\
-  Nguyen Binh Anh \and Bui Huu Vinh
+  Nguyen Binh Anh \and Tran Duc Vinh
 }
 \institute{Hanoi University of Science and Technology}
 \date{June 2026}
@@ -188,7 +188,7 @@
         \item Luong Xuan Nguyen
         \item Nguyen The Quan
         \item Nguyen Binh Anh
-        \item Bui Huu Vinh
+        \item Tran Duc Vinh
       \end{itemize}
     \end{column}
     \begin{column}{0.38\linewidth}
@@ -217,15 +217,7 @@
     \item Sensitivity, robustness, and reference conclusion
   \end{enumerate}
   \vspace{1.0em}
-  \begin{center}
-  \begin{tikzpicture}[node distance=1.45cm]
-    \node[circle,fill=Moss,text=Paper,minimum size=8mm] (s) {S};
-    \node[circle,fill=Coral,text=Paper,minimum size=8mm,right=of s] (i) {I};
-    \node[circle,fill=Muted,text=Paper,minimum size=8mm,right=of i] (r) {R};
-    \draw[very thick,-{Stealth[length=2mm]},Coral] (s) -- node[above,font=\scriptsize,color=Ink] {$w(r)$} (i);
-    \draw[very thick,-{Stealth[length=2mm]},Muted] (i) -- node[above,font=\scriptsize,color=Ink] {$\gamma$} (r);
-  \end{tikzpicture}
-  \end{center}
+  
 \end{frame}
 
 \begin{frame}{Problem}
@@ -272,35 +264,46 @@
         % 1. Vẽ nền trắng và viền cho hình vuông trước
         \draw[Line,thick,fill=Panel] (0,0) rectangle (5,5);
         
-        % 2. Tạo một vùng Clip trùng với hình vuông để gọt các nét thừa
+        % 2. Dùng scope và clip để gọt phần vòng tròn bị tràn ra ngoài đáy
         \begin{scope}
           \clip (0,0) rectangle (5,5);
-          
-          % Vòng tròn nét đứt giờ nếu có tràn xuống dưới cũng sẽ bị cắt phẳng theo cạnh đáy
-          \draw[Coral,thick,dashed] (2.5,0.45) circle (0.9);
-          
-          % Danh sách các chấm tròn nằm bên trong
-          \foreach \x/\y/\c in {
-            0.3/1.2/Moss,
-            1.2/3.5/Moss,
-            2.9/3.1/Moss,
-            4.4/1.6/Moss,
-            0.9/2.1/Muted,
-            2.1/2.5/Muted,
-            4.7/2.9/Muted,
-            2.5/0.45/Coral,
-            3.3/1.3/Coral,
-            3.9/4.0/Coral
-          }
-            \fill[\c] (\x,\y) circle (3.5pt);
+          % Giữ nguyên tâm (2.5, 0.25) như ban đầu của bạn nhưng được clip sạch sẽ
+          \draw[Coral,thick,dashed] (2.5,0.25) circle (0.9);
         \end{scope}
+        
+        % 3. Vẽ các chấm tròn theo đúng tọa độ gốc của bạn (nằm ngoài scope clip để không bị ảnh hưởng)
+        \foreach \x/\y/\c in {
+          0.4/0.8/Moss,
+          1.2/3.8/Moss,
+          2.1/2.5/Muted,
+          3.9/4.1/Coral,   % Chấm đỏ phía trên
+          4.3/1.2/Moss,
+          0.9/2.0/Muted,
+          2.9/3.3/Moss,
+          3.2/0.7/Coral,   % Chấm đỏ gần vòng tròn
+          1.7/1.1/Moss,
+          4.6/3.0/Muted
+        }
+          \fill[\c] (\x,\y) circle (3pt);
           
-        % 3. Các chữ chú thích phải nằm NGOÀI vùng clip để không bị mất chữ
-        \node[below,color=Muted,font=\scriptsize] at (2.5,-0.25) {initial infected at bottom};
+        % F0 gốc ở đáy của bạn
+        \fill[Coral] (2.5,0.25) circle (4pt);
+          
+        % 4. Chữ chú thích giữ nguyên
+        \node[below,color=Muted,font=\scriptsize] at (2.5,-0.18) {initial infected at bottom};
         \node[right,color=Muted,font=\scriptsize] at (5.1,2.5) {periodic boundary};
       \end{tikzpicture}
     \end{column}
   \end{columns}
+  \begin{center}
+  \begin{tikzpicture}[node distance=1.45cm]
+    \node[circle,fill=Moss,text=Paper,minimum size=8mm] (s) {S};
+    \node[circle,fill=Coral,text=Paper,minimum size=8mm,right=of s] (i) {I};
+    \node[circle,fill=Muted,text=Paper,minimum size=8mm,right=of i] (r) {R};
+    \draw[very thick,-{Stealth[length=2mm]},Coral] (s) -- node[above,font=\scriptsize,color=Ink] {$w(r)$} (i);
+    \draw[very thick,-{Stealth[length=2mm]},Muted] (i) -- node[above,font=\scriptsize,color=Ink] {$\gamma$} (r);
+  \end{tikzpicture}
+  \end{center}
 \end{frame}
 
 \begin{frame}{Two Superspreader Models}
