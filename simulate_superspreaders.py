@@ -9,9 +9,8 @@ Running this file generates the figures used by main.tex:
 
     python3 simulate_superspreaders.py
 
-The reference paper averages over 1000 Monte Carlo trials. By default this
-script uses MC_RUNS=200 for reasonable runtime; run with MC_RUNS=1000 to match
-the paper's averaging level more closely.
+The reference paper averages over 1000 Monte Carlo trials. This script also
+uses MC_RUNS=1000 by default; lower it only for quick exploratory runs.
 """
 
 from __future__ import annotations
@@ -36,7 +35,7 @@ MAX_STEPS = 60
 SEED = 20250618
 PERCOLATION_DISTANCE = 0.5 * L
 PAPER_TRIALS = 1000
-MC_RUNS = int(os.environ.get("MC_RUNS", "200"))
+MC_RUNS = int(os.environ.get("MC_RUNS", str(PAPER_TRIALS)))
 
 
 @dataclass
