@@ -8,11 +8,16 @@ stronger local infectiousness or by a longer contact radius.
 Running this file generates the figures used by main.tex:
 
     python3 simulate_superspreaders.py
+
+The reference paper averages over 1000 Monte Carlo trials. By default this
+script uses MC_RUNS=200 for reasonable runtime; run with MC_RUNS=1000 to match
+the paper's averaging level more closely.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 from pathlib import Path
 
 import matplotlib
@@ -30,6 +35,8 @@ DEFAULT_GAMMA = 1.0
 MAX_STEPS = 60
 SEED = 20250618
 PERCOLATION_DISTANCE = 0.5 * L
+PAPER_TRIALS = 1000
+MC_RUNS = int(os.environ.get("MC_RUNS", "200"))
 
 
 @dataclass
@@ -46,6 +53,11 @@ class SimulationResult:
 def individuals_from_density(density_scaled: float) -> int:
     """Convert rho*pi*r0^2 into N for L=10*r0."""
     return max(2, int(round(density_scaled * L * L / (np.pi * R0_DISTANCE**2))))
+
+
+def density_scaled_from_individuals(n: int) -> float:
+    """Convert N into rho*pi*r0^2 for L=10*r0."""
+    return n * np.pi * R0_DISTANCE**2 / (L * L)
 
 
 def infection_probability(distance: np.ndarray, is_super: bool, model: str) -> np.ndarray:
@@ -66,16 +78,15 @@ def infection_probability(distance: np.ndarray, is_super: bool, model: str) -> n
 
 
 def run_simulation(
-    density_scaled: float,
+    n: int,
     lambda_super: float,
     model: str,
     rng: np.random.Generator,
     gamma: float = DEFAULT_GAMMA,
     max_steps: int = MAX_STEPS,
 ) -> SimulationResult:
-    n = individuals_from_density(density_scaled)
     positions = rng.random((n, 2)) * L
-    positions[0] = np.array([0.0, 0.0])
+    positions[0] = np.array([0.5 * L, 0.0])
 
     is_super = rng.random(n) < lambda_super
     states = np.zeros(n, dtype=np.int8)  # 0=S, 1=I, 2=R
@@ -174,9 +185,10 @@ def interpolate_half_probability(densities: np.ndarray, probabilities: np.ndarra
 
 
 def save_percolation_figures(out_dir: Path, rng: np.random.Generator) -> dict[str, np.ndarray]:
-    densities = np.arange(2, 31, 2, dtype=float)
+    n_values = np.arange(150, 901, 50, dtype=int)
+    densities = np.array([density_scaled_from_individuals(int(n)) for n in n_values])
     lambdas = np.array([0.0, 0.2, 0.4, 0.6, 0.8, 1.0], dtype=float)
-    runs = 50
+    runs = MC_RUNS
     colors = plt.cm.viridis(np.linspace(0.08, 0.92, len(lambdas)))
     criticals: dict[str, list[float]] = {"strong": [], "hub": []}
 
@@ -184,9 +196,9 @@ def save_percolation_figures(out_dir: Path, rng: np.random.Generator) -> dict[st
         fig, ax = plt.subplots(figsize=(7.2, 4.4), dpi=160)
         for color, lam in zip(colors, lambdas):
             probs = []
-            for density in densities:
+            for n in n_values:
                 hits = sum(
-                    run_simulation(density, float(lam), model, rng).percolated
+                    run_simulation(int(n), float(lam), model, rng).percolated
                     for _ in range(runs)
                 )
                 probs.append(hits / runs)
@@ -223,15 +235,15 @@ def save_percolation_figures(out_dir: Path, rng: np.random.Generator) -> dict[st
 
 
 def save_dynamic_figures(out_dir: Path, rng: np.random.Generator) -> None:
-    density = 20.0
+    n = individuals_from_density(20.0)
     lambdas = np.array([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
-    runs = 90
+    runs = MC_RUNS
 
     fig, ax = plt.subplots(figsize=(7.2, 4.4), dpi=160)
     colors = plt.cm.plasma(np.linspace(0.08, 0.92, len(lambdas)))
     for color, lam in zip(colors, lambdas):
         fronts = [
-            run_simulation(density, float(lam), "strong", rng).front
+            run_simulation(n, float(lam), "strong", rng).front
             for _ in range(runs)
         ]
         mean_front, err_front = mean_padded(fronts)
@@ -253,7 +265,7 @@ def save_dynamic_figures(out_dir: Path, rng: np.random.Generator) -> None:
         for lam in lambdas:
             samples = []
             for _ in range(runs):
-                front = np.array(run_simulation(density, float(lam), model, rng).front)
+                front = np.array(run_simulation(n, float(lam), model, rng).front)
                 if front.size >= 3:
                     t = np.arange(0, min(8, front.size))
                     slope = np.polyfit(t, front[t], deg=1)[0]
@@ -280,7 +292,7 @@ def save_dynamic_figures(out_dir: Path, rng: np.random.Generator) -> None:
     fig, ax = plt.subplots(figsize=(7.2, 4.4), dpi=160)
     for label, model, lam in curve_specs:
         curves = [
-            run_simulation(density, lam, model, rng).new_cases
+            run_simulation(n, lam, model, rng).new_cases
             for _ in range(runs)
         ]
         mean_curve, err_curve = mean_padded(curves)
@@ -297,16 +309,16 @@ def save_dynamic_figures(out_dir: Path, rng: np.random.Generator) -> None:
 
 
 def save_secondary_figures(out_dir: Path, rng: np.random.Generator) -> None:
-    runs = 220
-    density = 15.0
+    runs = MC_RUNS
+    n = individuals_from_density(15.0)
 
     secondary_no_super = []
     secondary_strong = []
     secondary_hub = []
     for _ in range(runs):
-        secondary_no_super.extend(run_simulation(density, 0.0, "strong", rng).secondary.tolist())
-        secondary_strong.extend(run_simulation(density, 0.2, "strong", rng).secondary.tolist())
-        secondary_hub.extend(run_simulation(density, 0.2, "hub", rng).secondary.tolist())
+        secondary_no_super.extend(run_simulation(n, 0.0, "strong", rng).secondary.tolist())
+        secondary_strong.extend(run_simulation(n, 0.2, "strong", rng).secondary.tolist())
+        secondary_hub.extend(run_simulation(n, 0.2, "hub", rng).secondary.tolist())
 
     max_k = 24
     bins = np.arange(max_k + 2) - 0.5
