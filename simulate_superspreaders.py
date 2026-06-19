@@ -232,6 +232,7 @@ def save_percolation_figures(out_dir: Path, rng: np.random.Generator) -> dict[st
 
         ax.set_xlabel(r"scaled density $\rho\pi r_0^2$")
         ax.set_ylabel("percolation probability")
+        ax.set_xlim(left=0)
         ax.set_ylim(-0.04, 1.04)
         ax.grid(alpha=0.28)
         ax.legend(title=r"$\lambda$", ncol=3, fontsize=8, title_fontsize=9)
