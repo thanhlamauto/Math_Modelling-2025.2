@@ -390,20 +390,48 @@
 
 \begin{frame}{Basic Reproductive Number and Critical Density}
   \tagline{$R_0(\lambda)$ links microscopic infection kernels to the density threshold.}
-  \vspace{0.5em}
-  \[
-  R_0(\lambda)=
-  \frac{\rho}{w_0}
-  \left[
-    \lambda \int w_s(r)2\pi r\,dr+
-    (1-\lambda)\int w_n(r)2\pi r\,dr
-  \right].
-  \]
-  \[
-    R_0=R_c,\qquad
-    \rho_c\pi r_0^2=
-    \frac{R_c}{\lambda+\frac{1-\lambda}{6}}.
-  \]
+  \vspace{0.3em}
+  \begin{columns}[T,totalwidth=\linewidth]
+    \begin{column}{0.56\linewidth}
+      \[
+      \small
+      \begin{aligned}
+      R_0(\lambda)
+      &=\frac{\rho}{w_0}
+      \left[
+        \lambda \int w_s(r)2\pi r\,dr\right.\\[-0.2em]
+      &\qquad\left.
+        +(1-\lambda)\int w_n(r)2\pi r\,dr
+      \right].
+      \end{aligned}
+      \]
+      \[
+        \small
+        R_0=R_c,\qquad
+        \rho_c\pi r_0^2=
+        \frac{R_c}{\lambda+\frac{1-\lambda}{6}}.
+      \]
+    \end{column}
+    \begin{column}{0.40\linewidth}
+      \begin{block}{Formula annotations}
+        \tiny
+        \begin{tabular}{@{}p{0.31\linewidth}p{0.62\linewidth}@{}}
+          $R_0(\lambda)$ & mean secondary infections at superspreader fraction $\lambda$\\
+          $\rho$ & population density\\
+          $w_0$ & baseline infection scale\\
+          $\lambda$ & fraction of superspreaders\\
+          $w_s(r)$ & superspreader infection kernel\\
+          $w_n(r)$ & normal infection kernel\\
+          $r$ & distance between individuals\\
+          $2\pi r\,dr$ & area ring at distance $r$\\
+          $R_c$ & critical reproductive threshold\\
+          $\rho_c$ & critical population density\\
+          $r_0$ & baseline contact radius\\
+        \end{tabular}
+      \end{block}
+    \end{column}
+  \end{columns}
+  \vspace{0.35em}
   \begin{columns}[T,totalwidth=\linewidth]
     \begin{column}{0.48\linewidth}
       \begin{block}{Strong infectiousness}
